@@ -83,15 +83,22 @@ array_serializer_class.class_exec do
   end
 end
 
-ActiveModel::Serializer.class_exec do
-  def self.datasource_select(*args)
+module SerializerClassMethods
+  def inherited(base)
+    base.datasource_select(*datasource_select.deep_dup)
+    base.datasource_includes(*datasource_includes.deep_dup)
+
+    super
+  end
+
+  def datasource_select(*args)
     @datasource_select ||= []
     @datasource_select.concat(args)
 
     @datasource_select
   end
 
-  def self.datasource_includes(*args)
+  def datasource_includes(*args)
     @datasource_includes ||= {}
 
     args.each do |arg|
@@ -102,7 +109,7 @@ ActiveModel::Serializer.class_exec do
   end
 
 private
-  def self.datasource_includes_to_select(arg)
+  def datasource_includes_to_select(arg)
     if arg.kind_of?(Hash)
       arg.keys.inject({}) do |memo, key|
         memo[key.to_sym] = ["*", datasource_includes_to_select(arg[key])]
@@ -119,3 +126,5 @@ private
     end
   end
 end
+
+ActiveModel::Serializer.singleton_class.send :prepend, SerializerClassMethods
