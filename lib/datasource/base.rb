@@ -255,7 +255,7 @@ module Datasource
       self.class._collection_context.new(@scope, rows, self, @params)
     end
 
-    def get_loader_dependencies
+    def get_exposed_loaders
       @expose_attributes
       .map { |name|
         self.class._attributes[name]
@@ -267,34 +267,63 @@ module Datasource
       .sort_by { |loader_name|
         self.class._loader_order.index(loader_name)
       }
-      .map { |loader_name|
-        loader =
-          self.class._loaders[loader_name] or
-          fail Datasource::Error, "loader with name :#{loader_name} could not be found"
-        [loader_name, loader]
-      }
+    end
+
+    def run_loaders(rows)
+      return if rows.empty?
+
+      # check if loaders have already been ran
+      if rows.first._datasource_loaded
+        # not frequent, so we can afford to check all rows
+        check_list = get_exposed_loaders
+        run_list = []
+        rows.each do |row|
+          if row._datasource_loaded
+            check_list.delete_if do |name|
+              if !row._datasource_loaded.key?(name)
+                run_list << name
+                true
+              end
+            end
+            break if check_list.empty?
+          else
+            run_list.concat(check_list)
+            break
+          end
+        end
+      else
+        # most frequent case - loaders haven't been ran
+        run_list = get_exposed_loaders
+      end
+
+      get_collection_context(rows).tap do |collection_context|
+        run_list.each do |loader_name|
+          loader =
+            self.class._loaders[loader_name] or
+            fail Datasource::Error, "loader with name :#{loader_name} could not be found"
+          Datasource.logger.info { "Running loader #{loader_name} for #{rows.first.try!(:class)}" }
+          collection_context.loaded_values[loader_name] = loader.load(collection_context)
+        end
+      end
+    end
+
+    def set_row_loaded_values(collection_context, row)
+      row._datasource_loaded ||= {}
+
+      primary_key = row.send(self.class.primary_key)
+      collection_context.loaded_values.each_pair do |name, values|
+        row._datasource_loaded[name] = values[primary_key]
+      end
     end
 
     def results(rows = nil)
       rows ||= adapter.get_rows(self)
 
-      unless rows.empty?
-        collection_context = get_collection_context(rows)
+      collection_context = run_loaders(rows)
 
-        loader_dependencies = get_loader_dependencies.map do |(loader_name, loader)|
-          Datasource.logger.info { "Running loader #{loader_name} for #{rows.first.try!(:class)}" }
-          collection_context.loaded_values[loader_name] = loader.load(collection_context)
-        end
-
-        rows.each do |row|
-          row._datasource_instance = self
-          row._datasource_loaded = {}
-
-          primary_key = row.send(self.class.primary_key)
-          collection_context.loaded_values.each_pair do |name, values|
-            row._datasource_loaded[name] = values[primary_key]
-          end
-        end
+      rows.each do |row|
+        row._datasource_instance = self
+        set_row_loaded_values(collection_context, row) if collection_context
       end
 
       rows

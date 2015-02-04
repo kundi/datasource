@@ -164,10 +164,27 @@ module Datasource
         end
       end
 
+      def association_loaded?(records, name, assoc_select)
+        if records.first.association(name).loaded?
+          all_loaded = records.all? { |record| record.association(name).loaded? }
+          if assoc_select == ["*"]
+            all_loaded
+          elsif all_loaded
+            records.all? do |record|
+              assoc_sample = Array(record.send(name)).first
+              assoc_sample.nil? || assoc_sample._datasource_instance
+            end
+          else
+            false
+          end
+        else
+          false
+        end
+      end
+
       def load_association(records, name, assoc_select, params)
         return if records.empty?
         name = name.to_sym
-        return if records.first.association(name).loaded?
         klass = records.first.class
         if reflection = klass.reflect_on_association(name)
           assoc_class = association_klass(reflection)
