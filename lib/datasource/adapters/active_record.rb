@@ -247,6 +247,7 @@ module Datasource
       end
 
       def upgrade_records(ds, records)
+        Datasource.logger.debug { "Upgrading records #{records.map(&:class).map(&:name).join(', ')}" }
         load_associations(ds, records)
         ds.results(records)
       end

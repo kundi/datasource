@@ -192,6 +192,7 @@ module Datasource
       end
 
       def upgrade_records(ds, records)
+        Datasource.logger.debug { "Upgrading records #{records.map(&:class).map(&:name).join(', ')}" }
         get_final_scope(ds).send :post_load, records
         ds.results(records)
       end
