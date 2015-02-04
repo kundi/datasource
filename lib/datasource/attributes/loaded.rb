@@ -30,26 +30,36 @@ module Datasource
             end
 
             if _options[:one]
-              results.inject({}) do |hash, r|
+              results.inject(empty_hash) do |hash, r|
                 key = r.send(*send_args, _options[:group_by])
                 hash[key] = r
                 hash
               end
             else
-              results.inject({}) do |hash, r|
+              results.inject(empty_hash) do |hash, r|
                 key = r.send(*send_args, _options[:group_by])
                 (hash[key] ||= []).push(r)
                 hash
               end
             end
           elsif _options[:from] == :array
-            Array(results).inject({}) do |hash, r|
+            Array(results).inject(empty_hash) do |hash, r|
               hash[r[0]] = r[1]
               hash
             end
           else
-            results
+            set_hash_default(Hash(results))
           end
+        end
+
+      private
+        def set_hash_default(hash)
+          hash.default = default_value
+          hash
+        end
+
+        def empty_hash
+          set_hash_default(Hash.new)
         end
       end
     end
@@ -64,6 +74,7 @@ module Datasource
         options(_options.reverse_merge(source: :"load_#{name}"))
       end
       @_loaders[name] = loader_class
+      @_loader_order << name
 
       method_module = Module.new do
         define_method name do |*args, &block|

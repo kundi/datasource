@@ -1,6 +1,6 @@
 module Datasource
   class CollectionContext
-    attr_reader :scope, :models, :datasource, :datasource_class, :params
+    attr_reader :scope, :models, :datasource, :datasource_class, :params, :loaded_values
 
     def initialize(scope, collection, datasource, params)
       @scope = scope
@@ -8,6 +8,7 @@ module Datasource
       @datasource = datasource
       @datasource_class = datasource.class
       @params = params
+      @loaded_values = {}
     end
 
     def model_ids

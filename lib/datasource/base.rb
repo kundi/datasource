@@ -1,13 +1,14 @@
 module Datasource
   class Base
     class << self
-      attr_accessor :_attributes, :_associations, :_update_scope, :_loaders, :_collection_context
+      attr_accessor :_attributes, :_associations, :_update_scope, :_loaders, :_loader_order, :_collection_context
       attr_writer :orm_klass
 
       def inherited(base)
         base._attributes = (_attributes || {}).dup
         base._associations = (_associations || {}).dup
         base._loaders = (_loaders || {}).dup
+        base._loader_order = (_loader_order || []).dup
         base._collection_context = Class.new(_collection_context || CollectionContext)
       end
 
@@ -263,6 +264,9 @@ module Datasource
       }.flat_map { |att|
         att[:klass]._loader_depends
       }.uniq
+      .sort_by { |loader_name|
+        self.class._loader_order.index(loader_name)
+      }
       .map { |loader_name|
         loader =
           self.class._loaders[loader_name] or
@@ -276,13 +280,10 @@ module Datasource
 
       unless rows.empty?
         collection_context = get_collection_context(rows)
-        loaded_values = {}
-        default_values = {}
 
         loader_dependencies = get_loader_dependencies.map do |(loader_name, loader)|
           Datasource.logger.info { "Running loader #{loader_name} for #{rows.first.try!(:class)}" }
-          loaded_values[loader_name] = loader.load(collection_context)
-          default_values[loader_name] = loader.default_value
+          collection_context.loaded_values[loader_name] = loader.load(collection_context)
         end
 
         rows.each do |row|
@@ -290,13 +291,8 @@ module Datasource
           row._datasource_loaded = {}
 
           primary_key = row.send(self.class.primary_key)
-          loaded_values.each_pair do |name, values|
-            row._datasource_loaded[name] =
-              if values.try!(:key?, primary_key)
-                values[primary_key]
-              else
-                default_values[name]
-              end
+          collection_context.loaded_values.each_pair do |name, values|
+            row._datasource_loaded[name] = values[primary_key]
           end
         end
       end
