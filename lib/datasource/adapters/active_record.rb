@@ -166,7 +166,8 @@ module Datasource
 
       def load_association(records, name, assoc_select, params)
         return if records.empty?
-        return if records.first.association(name.to_sym).loaded?
+        name = name.to_sym
+        return if records.first.association(name).loaded?
         klass = records.first.class
         if reflection = klass.reflect_on_association(name)
           assoc_class = association_klass(reflection)
@@ -179,7 +180,7 @@ module Datasource
             hash.deep_merge!(att) if att.kind_of?(Hash)
             hash
           end
-          Datasource::Base.reflection_select(association_reflection(klass, name.to_sym), [], assoc_select_attributes)
+          Datasource::Base.reflection_select(association_reflection(klass, name), [], assoc_select_attributes)
           datasource.params(params)
 
           Datasource.logger.debug { "load_association #{records.first.try!(:class)} #{name}: #{assoc_select_attributes.inspect}" }
