@@ -151,6 +151,10 @@ module Datasource
         false
       end
 
+      def scope_to_records(scope)
+        scope.all
+      end
+
       def has_attribute?(record, name)
         record.values.key?(name.to_sym)
       end

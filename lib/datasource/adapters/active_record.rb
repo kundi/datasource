@@ -148,6 +148,10 @@ module Datasource
         scope.loaded?
       end
 
+      def scope_to_records(scope)
+        scope.to_a
+      end
+
       def has_attribute?(record, name)
         record.attributes.key?(name.to_s)
       end

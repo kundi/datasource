@@ -10,11 +10,12 @@ module Datasource
           if adapter && !adapter.scope_loaded?(objects)
             datasource_class ||= adapter.scope_to_class(objects).default_datasource
 
-            records = objects
+            scope = objects
               .with_datasource(datasource_class)
               .for_serializer(options[:serializer])
               .datasource_params(*[options[:datasource_params]].compact)
-              .all.to_a # all needed for Sequel eager loading
+
+            records = adapter.scope_to_records(scope)
 
             initialize_without_datasource(records, options)
           else
