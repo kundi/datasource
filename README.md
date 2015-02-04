@@ -263,6 +263,19 @@ can be specified when you call `render`:
   end
 ```
 
+### Debugging and logging
+
+Datasource outputs some useful logs that you can use debugging. By default the log level is
+set to warnings only, but you can change it. You can add the following line to your
+`config/initializers/datasource.rb`:
+
+```ruby
+Datasource.logger.level = Logger::INFO
+```
+
+You can also set it to `DEBUG` for more output. The logger outputs to `stdout` by default. It
+is not recommended to have this enabled in production.
+
 ## Getting Help
 
 If you find a bug, please report an [Issue](https://github.com/kundi/datasource/issues/new).
