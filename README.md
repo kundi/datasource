@@ -13,7 +13,7 @@ Requires Ruby 2.0 or higher.
 Add to Gemfile (recommended to use github version until API is stable)
 
 ```
-gem 'datasource', github: 'mrbrdo/datasource'
+gem 'datasource', github: 'kundi/datasource'
 ```
 
 ```
@@ -265,13 +265,13 @@ can be specified when you call `render`:
 
 ## Getting Help
 
-If you find a bug, please report an [Issue](https://github.com/mrbrdo/datasource/issues/new).
+If you find a bug, please report an [Issue](https://github.com/kundi/datasource/issues/new).
 
 If you have a question, you can also open an Issue.
 
 ## Contributing
 
-1. Fork it ( https://github.com/mrbrdo/datasource/fork )
+1. Fork it ( https://github.com/kundi/datasource/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
