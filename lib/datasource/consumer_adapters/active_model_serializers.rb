@@ -10,10 +10,18 @@ module Datasource
           if adapter && !adapter.scope_loaded?(objects)
             datasource_class ||= adapter.scope_to_class(objects).default_datasource
 
-            scope = objects
+            scope = begin
+              objects
               .with_datasource(datasource_class)
               .for_serializer(options[:serializer])
               .datasource_params(*[options[:datasource_params]].compact)
+            rescue NameError
+              if options[:serializer].nil?
+                return initialize_without_datasource(objects, options)
+              else
+                raise
+              end
+            end
 
             records = adapter.scope_to_records(scope)
 
