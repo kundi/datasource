@@ -1,6 +1,6 @@
 require 'datasource/configuration'
 module Datasource
-  cattr_accessor :logger
+  mattr_accessor :logger
 
   Error = Class.new(StandardError)
   RecursionError = Class.new(StandardError)
