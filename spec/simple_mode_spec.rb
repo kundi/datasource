@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 module SimpleModeSpec
-  describe "Simple Mode", :activerecord, :simple_mode do
+  describe "Simple Mode", :activerecord, :without_raise_error_on_unknown_attribute_select do
     class Comment < ActiveRecord::Base
       belongs_to :post
     end

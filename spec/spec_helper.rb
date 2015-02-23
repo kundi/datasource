@@ -12,7 +12,7 @@ require 'datasource'
 
 Datasource.setup do |config|
   config.adapters = [:activerecord, :sequel]
-  config.simple_mode = false
+  config.raise_error_on_unknown_attribute_select = true
 end
 
 Dir["#{File.dirname(__FILE__)}/support/**/*.rb"].each { |f| require f }
@@ -36,11 +36,11 @@ RSpec.configure do |config|
     DatabaseCleaner.clean
   end
 
-  config.before(:example, simple_mode: true) do
-    Datasource.config.simple_mode = true
+  config.before(:example, without_raise_error_on_unknown_attribute_select: true) do
+    Datasource.config.raise_error_on_unknown_attribute_select = false
   end
 
-  config.after(:example, simple_mode: true) do
-    Datasource.config.simple_mode = false
+  config.after(:example, without_raise_error_on_unknown_attribute_select: true) do
+    Datasource.config.raise_error_on_unknown_attribute_select = true
   end
 end

@@ -157,7 +157,7 @@ module Datasource
         end
       end
       update_dependencies(newly_exposed_attributes) unless newly_exposed_attributes.empty?
-      fail_missing_attributes(missing_attributes) unless Datasource.config.simple_mode || missing_attributes.empty?
+      fail_missing_attributes(missing_attributes) if Datasource.config.raise_error_on_unknown_attribute_select && !missing_attributes.empty?
       self
     end
 

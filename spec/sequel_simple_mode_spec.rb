@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 module SequelSimpleModeSpec
-  describe "Simple Mode (Sequel)", :sequel, :simple_mode do
+  describe "Simple Mode (Sequel)", :sequel, :without_raise_error_on_unknown_attribute_select do
     class Comment < Sequel::Model
       many_to_one :post
     end

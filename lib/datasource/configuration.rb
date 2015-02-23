@@ -5,7 +5,7 @@ module Datasource
 
     included do |base|
       base.config.adapters = Configuration.default_adapters
-      base.config.simple_mode = false
+      base.config.raise_error_on_unknown_attribute_select = false
     end
 
     def self.default_adapters
