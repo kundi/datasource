@@ -11,6 +11,10 @@ module Datasource
           end
         end
 
+        def datasource_get(key)
+          @datasource_info[key]
+        end
+
         def datasource_set(hash)
           @datasource_info.merge!(hash)
           self
@@ -33,7 +37,7 @@ module Datasource
           datasource.params(*@datasource_info[:params])
           if @datasource_info[:serializer_class]
             select = []
-            @datasource_info[:serializer_class].datasource_adapter.to_datasource_select(select, klass.orm_klass, @datasource_info[:serializer_class], nil, datasource.adapter)
+            @datasource_info[:serializer_class].datasource_adapter.to_datasource_select(select, klass.orm_klass, @datasource_info[:serializer_class], nil, datasource.adapter, datasource)
 
             datasource.select(*select)
           end
@@ -64,13 +68,14 @@ module Datasource
         end
 
         def for_serializer(serializer = nil)
-          datasource_class = self.class.default_datasource
-          pk = datasource_class.primary_key.to_sym
+          scope = self.class.for_serializer(serializer)
 
-          scope = self.class
-          .with_datasource(datasource_class)
-          .for_serializer(serializer)
-          .where(pk => send(pk))
+          pk = scope.datasource_get(:datasource_class).primary_key.to_sym
+          if self_pk = send(pk)
+            scope = scope.where(pk => self_pk)
+          else
+            scope = scope.none
+          end
 
           scope = yield(scope) if block_given?
 
@@ -84,10 +89,10 @@ module Datasource
 
         module ClassMethods
           def for_serializer(serializer_class = nil)
-            scope = scope_with_datasource_ext
             serializer_class ||=
               Datasource::Base.default_consumer_adapter.get_serializer_for(
-                Adapters::ActiveRecord.scope_to_class(scope))
+                Adapters::ActiveRecord.scope_to_class(all))
+            scope = scope_with_datasource_ext(serializer_class.use_datasource)
             scope.datasource_set(serializer_class: serializer_class)
           end
 
@@ -110,7 +115,11 @@ module Datasource
         private
           def scope_with_datasource_ext(datasource_class = nil)
             if all.respond_to?(:datasource_set)
-              all
+              if datasource_class
+                all.datasource_set(datasource_class: datasource_class)
+              else
+                all
+              end
             else
               datasource_class ||= default_datasource
 

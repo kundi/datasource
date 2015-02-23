@@ -43,6 +43,12 @@ module Datasource
         _collection_context.class_exec(&block)
       end
 
+      def _column_attribute_names
+        column_attributes = _attributes.values.select { |att|
+          att[:klass].nil?
+        }.map { |att| att[:name] }
+      end
+
     private
       def attributes(*attrs)
         attrs.each { |name| attribute(name) }
@@ -106,10 +112,7 @@ module Datasource
     end
 
     def select_all_columns
-      column_attributes = self.class._attributes.values.select do |att|
-        att[:klass].nil?
-      end
-      columns = column_attributes.map { |att| att[:name] }
+      columns = self.class._column_attribute_names
       select(*columns)
       @select_all_columns = true
 
