@@ -33,7 +33,7 @@ module Datasource
           datasource.params(*@datasource_info[:params])
           if @datasource_info[:serializer_class]
             select = []
-            Datasource::Base.consumer_adapter.to_datasource_select(select, klass.orm_klass, @datasource_info[:serializer_class], nil, datasource.adapter)
+            @datasource_info[:serializer_class].datasource_adapter.to_datasource_select(select, klass.orm_klass, @datasource_info[:serializer_class], nil, datasource.adapter)
 
             datasource.select(*select)
           end
@@ -86,7 +86,7 @@ module Datasource
           def for_serializer(serializer_class = nil)
             scope = scope_with_datasource_ext
             serializer_class ||=
-              Datasource::Base.consumer_adapter.get_serializer_for(
+              Datasource::Base.default_consumer_adapter.get_serializer_for(
                 Adapters::ActiveRecord.scope_to_class(scope))
             scope.datasource_set(serializer_class: serializer_class)
           end

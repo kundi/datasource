@@ -3,6 +3,8 @@ module Datasource
     class << self
       attr_accessor :_attributes, :_associations, :_update_scope, :_loaders, :_loader_order, :_collection_context
       attr_writer :orm_klass
+      # Should be set by consumer adapter library (e.g. for ActiveModelSerializers)
+      attr_accessor :default_consumer_adapter
 
       def inherited(base)
         base._attributes = (_attributes || {}).dup
@@ -16,10 +18,6 @@ module Datasource
         @adapter ||= begin
           Datasource::Adapters.const_get(Datasource::Adapters.constants.first)
         end
-      end
-
-      def consumer_adapter
-        @consumer_adapter = Datasource::ConsumerAdapters::ActiveModelSerializers
       end
 
       def orm_klass

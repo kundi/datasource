@@ -7,7 +7,7 @@
 ** Note: the API of this gem is still unstable and may change a lot between versions! This project uses semantic versioning (until version 1.0.0, minor version changes may include API changes, but patch version will not) **
 
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=ajSNCbZYqKk
-" target="_blank"><img src="http://img.youtube.com/vi/ajSNCbZYqKk/0.jpg" 
+" target="_blank"><img src="http://img.youtube.com/vi/ajSNCbZYqKk/0.jpg"
 alt="Datasource talk" width="240" height="180" border="10" /><br>A 30-min talk about Datasource</a>
 
 #### Install
@@ -35,10 +35,6 @@ rails g datasource:install
 
 - ActiveRecord
 - Sequel
-
-#### Serializer support
-
-- active_model_serializers
 
 ### Associations
 

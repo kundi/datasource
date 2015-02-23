@@ -9,7 +9,6 @@ require 'active_support/all'
 require 'active_record'
 require 'sequel'
 require 'datasource'
-require 'active_model_serializers'
 
 Datasource.setup do |config|
   config.adapters = [:activerecord, :sequel, :ams]

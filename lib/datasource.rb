@@ -9,9 +9,7 @@ module Datasource
   AdapterPaths = {
     activerecord: 'datasource/adapters/active_record',
     active_record: :activerecord,
-    sequel: 'datasource/adapters/sequel',
-    ams: 'datasource/consumer_adapters/active_model_serializers',
-    active_model_serializers: :ams
+    sequel: 'datasource/adapters/sequel'
   }
 
 module_function
@@ -26,10 +24,11 @@ module_function
 
     yield(config)
 
-    config.adapters.each do |adapter|
-      adapter = AdapterPaths[adapter]
-      adapter = AdapterPaths[adapter] if adapter.is_a?(Symbol)
-      require adapter
+    config.adapters.each do |adapter_name|
+      adapter_path = AdapterPaths[adapter_name]
+      adapter_path = AdapterPaths[adapter_path] if adapter_path.is_a?(Symbol)
+      fail "Unknown Datasource adapter '#{adapter_name}'." unless adapter_path
+      require adapter_path
     end
   end
 
