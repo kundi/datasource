@@ -88,23 +88,7 @@ module Datasource
         end
 
         def for_serializer(serializer = nil)
-          scope = self.class.for_serializer(serializer)
-
-          pk = scope.datasource_get(:datasource_class).primary_key.to_sym
-          if self_pk = send(pk)
-            scope = scope.where(pk => self_pk)
-          else
-            scope = scope.where("1 = 0")
-          end
-
-          scope = yield(scope) if block_given?
-
-          datasource = scope.get_datasource
-          if datasource.can_upgrade?(self)
-            datasource.upgrade_records(self).first
-          else
-            scope.first
-          end
+          self.class.upgrade_for_serializer([self], serializer).first
         end
 
         module ClassMethods
@@ -114,6 +98,25 @@ module Datasource
 
           def datasource_module(&block)
             default_datasource.instance_exec(&block)
+          end
+
+          def upgrade_for_serializer(records, serializer_class = nil)
+            scope = for_serializer(serializer_class)
+            records = Array(records)
+
+            pk = scope.datasource_get(:datasource_class).primary_key.to_sym
+            if primary_keys = records.map(&pk)
+              scope = scope.where(pk => primary_keys.compact)
+            end
+
+            scope = yield(scope) if block_given?
+
+            datasource = scope.get_datasource
+            if datasource.can_upgrade?(records)
+              datasource.upgrade_records(records)
+            else
+              scope.all
+            end
           end
         end
       end
