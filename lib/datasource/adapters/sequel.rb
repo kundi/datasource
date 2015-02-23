@@ -87,8 +87,8 @@ module Datasource
           end
         end
 
-        def for_serializer(serializer = nil)
-          self.class.upgrade_for_serializer([self], serializer).first
+        def for_serializer(serializer_class = nil, datasource_class = nil)
+          self.class.upgrade_for_serializer([self], serializer_class, datasource_class).first
         end
 
         module ClassMethods
@@ -100,8 +100,8 @@ module Datasource
             default_datasource.instance_exec(&block)
           end
 
-          def upgrade_for_serializer(records, serializer_class = nil)
-            scope = for_serializer(serializer_class)
+          def upgrade_for_serializer(records, serializer_class = nil, datasource_class = nil)
+            scope = with_datasource(datasource_class).for_serializer(serializer_class)
             records = Array(records)
 
             pk = scope.datasource_get(:datasource_class).primary_key.to_sym
