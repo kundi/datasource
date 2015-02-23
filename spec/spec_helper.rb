@@ -11,7 +11,7 @@ require 'sequel'
 require 'datasource'
 
 Datasource.setup do |config|
-  config.adapters = [:activerecord, :sequel, :ams]
+  config.adapters = [:activerecord, :sequel]
   config.simple_mode = false
 end
 

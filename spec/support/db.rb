@@ -23,7 +23,6 @@ ActiveRecord::Schema.define(:version => 0) do
 end
 
 ActiveRecord::Base.send :include, Datasource::Adapters::ActiveRecord::Model
-Sequel::Model.send :include, ActiveModel::SerializerSupport
 
 def expect_query_count(count)
   old_logger = ActiveRecord::Base.logger
