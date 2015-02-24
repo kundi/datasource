@@ -18,9 +18,9 @@ module LoadedSpec
 
         collection do
           def load_ordered_comments
-            Comment.for_serializer(CommentSerializer).where(post_id: model_ids)
+            Comment.with_datasource.where(post_id: model_ids)
               .order("post_id, id desc")
-              .datasource_select(:post_id)
+              .datasource_select(:id, :comment, :post_id)
           end
 
           def load_newest_comment_text
@@ -31,10 +31,10 @@ module LoadedSpec
           end
 
           def load_newest_comment
-            Comment.for_serializer.where(post_id: model_ids)
+            Comment.with_datasource.where(post_id: model_ids)
               .group("post_id")
               .having("id = MAX(id)")
-              .datasource_select(:post_id)
+              .datasource_select(:id, :comment, :post_id)
           end
         end
       end
@@ -49,30 +49,22 @@ module LoadedSpec
       end
     end
 
-    class CommentSerializer < ActiveModel::Serializer
-      attributes :id, :comment
-    end
-
-    class PostSerializer < ActiveModel::Serializer
-      attributes :id, :title, :newest_comment, :newest_comment_text, :ordered_comments
-
-      def newest_comment
-        CommentSerializer.new(object.newest_comment).as_json
-      end
-
-      def ordered_comments
-        ActiveModel::ArraySerializer.new(object.ordered_comments).as_json
-      end
-    end
-
     it "uses loaded method" do
       post = Post.create! title: "First Post"
       2.times { |i| post.comments.create! comment: "Comment #{i+1}" }
 
       expect_query_count(4) do
-        expect(ActiveModel::ArraySerializer.new(Post.all).as_json).to eq(
-          [{:id=>1, :title=>"First Post", :newest_comment=>{"comment"=>{:id=>2, :comment=>"Comment 2"}}, :newest_comment_text=>"Comment 2", :ordered_comments=>[{:id=>2, :comment=>"Comment 2"}, {:id=>1, :comment=>"Comment 1"}]}]
-        )
+        posts = Post.with_datasource.datasource_select(:id, :title, :newest_comment, :newest_comment_text, :ordered_comments).to_a
+        post = posts.first
+        expect(post.title).to eq("First Post")
+
+        expect(post.newest_comment.class).to eq(Comment)
+        expect(post.newest_comment.comment).to eq("Comment 2")
+
+        expect(post.newest_comment_text).to eq("Comment 2")
+
+        expect(post.ordered_comments[0].comment).to eq("Comment 2")
+        expect(post.ordered_comments[1].comment).to eq("Comment 1")
       end
     end
 
@@ -85,24 +77,16 @@ module LoadedSpec
 
         collection do
           def load_newest_comment
-            Comment.for_serializer.where(post_id: model_ids)
+            Comment.with_datasource.where(post_id: model_ids)
               .group("post_id")
               .having("id = MAX(id)")
-              .datasource_select(:post_id)
+              .datasource_select(:id, :comment, :post_id)
           end
         end
       end
 
       def newest_comment
         comments.order(:id).last
-      end
-    end
-
-    class PostWithLoadedSerializer < ActiveModel::Serializer
-      attributes :id, :newest_comment
-
-      def newest_comment
-        CommentSerializer.new(object.newest_comment).as_json
       end
     end
 
@@ -114,12 +98,16 @@ module LoadedSpec
         end
 
         expect_query_count(2) do
-          expect(ActiveModel::ArraySerializer.new(PostWithLoaded.all).as_json).to eq(
-            [
-              {:id=>1, :newest_comment=>{"comment"=>{:id=>2, :comment=>"Comment 2"}}},
-              {:id=>2, :newest_comment=>{"comment"=>{:id=>4, :comment=>"Comment 2"}}}
-            ]
-          )
+          posts = PostWithLoaded.with_datasource.datasource_select(:id, :newest_comment).to_a
+
+          expect(posts[0].newest_comment.class).to eq(Comment)
+          expect(posts[0].newest_comment.comment).to eq("Comment 2")
+
+          expect(posts[1].newest_comment.class).to eq(Comment)
+          expect(posts[1].newest_comment.comment).to eq("Comment 2")
+
+          expect(posts[0].id).to_not eq(posts[1].id)
+          expect(posts[0].newest_comment.id).to_not eq(posts[1].newest_comment.id)
         end
       end
 

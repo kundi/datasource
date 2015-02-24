@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-module DatasourceSubclassSpec
+module SubclassSpec
   describe "Datasource::Base subclass" do
     class Post < ActiveRecord::Base
       belongs_to :blog

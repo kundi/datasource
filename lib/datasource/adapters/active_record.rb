@@ -73,6 +73,9 @@ module Datasource
 
         module ClassMethods
           def for_serializer(serializer_class = nil)
+            if Datasource::Base.default_consumer_adapter.nil?
+              fail Datasource::Error, "No serializer adapter loaded, see the active_loaders gem."
+            end
             serializer_class ||=
               Datasource::Base.default_consumer_adapter.get_serializer_for(
                 Adapters::ActiveRecord.scope_to_class(all))

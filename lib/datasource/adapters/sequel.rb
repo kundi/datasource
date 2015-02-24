@@ -10,6 +10,10 @@ module Datasource
           end
         end
 
+        def datasource_get(key)
+          @datasource_info[key]
+        end
+
         def datasource_set(hash)
           @datasource_info.merge!(hash)
           self
@@ -101,8 +105,11 @@ module Datasource
           end
 
           def upgrade_for_serializer(records, serializer_class = nil, datasource_class = nil)
-            scope = with_datasource(datasource_class).for_serializer(serializer_class)
+            # must use filter to get a new scope
+            scope = filter.with_datasource(datasource_class).for_serializer(serializer_class)
             records = Array(records)
+
+            binding.pry if scope.datasource_get(:datasource_class).nil?
 
             pk = scope.datasource_get(:datasource_class).primary_key.to_sym
             if primary_keys = records.map(&pk)
@@ -201,7 +208,11 @@ module Datasource
 
       def upgrade_records(ds, records)
         Datasource.logger.debug { "Upgrading records #{records.map(&:class).map(&:name).join(', ')}" }
-        get_final_scope(ds).send :post_load, records
+        # NOTE: this does not guarantee assocs are loaded, there might be a better way
+        assocs_loaded = records.all? { |record|
+          record._datasource_instance
+        }
+        get_final_scope(ds).send :post_load, records unless assocs_loaded
         ds.results(records)
       end
 

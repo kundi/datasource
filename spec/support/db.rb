@@ -24,28 +24,35 @@ end
 
 ActiveRecord::Base.send :include, Datasource::Adapters::ActiveRecord::Model
 
-def expect_query_count(count)
-  old_logger = ActiveRecord::Base.logger
-  logger = StringIO.new
-  ActiveRecord::Base.logger = Logger.new(logger)
-  begin
-    yield(logger)
-  ensure
-    ActiveRecord::Base.logger = old_logger
-    # puts logger.string
-  end
-  expect(logger.string.lines.count).to eq(count)
+def log_sql!
+  Sequel::Model.db.loggers << (
+    ActiveRecord::Base.logger = Logger.new(STDOUT))
 end
 
-def expect_query_count_sequel(count)
+def expect_query_count(count)
   logger_io = StringIO.new
   logger = Logger.new(logger_io)
-  Sequel::Model.db.loggers << logger
+  logger.formatter = ->(severity, datetime, progname, msg) { "#{msg}\n" }
+  if defined?(ActiveRecord::Base)
+    ar_old_logger = ActiveRecord::Base.logger
+    ActiveRecord::Base.logger = logger
+  end
+  if defined?(Sequel::Model)
+    Sequel::Model.db.loggers << logger
+  end
+
   begin
     yield(logger_io)
   ensure
-    Sequel::Model.db.loggers.delete(logger)
-    # puts logger_io.string
+    if defined?(ActiveRecord::Base)
+      ActiveRecord::Base.logger = ar_old_logger
+    end
+    if defined?(Sequel::Model)
+      Sequel::Model.db.loggers.delete(logger)
+    end
   end
+
+  output = logger_io.string
+  puts output if output.lines.count != count
   expect(logger_io.string.lines.count).to eq(count)
 end
