@@ -91,8 +91,8 @@ module Datasource
           end
         end
 
-        def for_serializer(serializer_class = nil, datasource_class = nil)
-          self.class.upgrade_for_serializer([self], serializer_class, datasource_class).first
+        def for_serializer(serializer_class = nil, datasource_class = nil, &block)
+          self.class.upgrade_for_serializer([self], serializer_class, datasource_class, &block).first
         end
 
         module ClassMethods
