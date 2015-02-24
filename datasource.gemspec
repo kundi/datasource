@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name               = "datasource"
-  s.version            = "0.3.0"
+  s.version            = "0.3.1"
 
   s.authors            = ["Jan Berdajs"]
   s.email              = ["mrbrdo@gmail.com"]
