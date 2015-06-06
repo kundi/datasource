@@ -107,15 +107,27 @@ module Datasource
           end
 
           def default_datasource
-            @default_datasource ||= begin
-              "#{name}Datasource".constantize
-            rescue NameError
+            nil
+          end
+
+          def get_default_datasource
+            if ds = default_datasource
+              ds
+            else
+              ancestors.each do |klass|
+                if klass.ancestors.include?(::ActiveRecord::Base) && klass != ::ActiveRecord::Base
+                  begin
+                    return "#{klass.name}Datasource".constantize
+                  rescue NameError
+                  end
+                end
+              end
               Datasource::From(self)
             end
           end
 
           def datasource_module(&block)
-            default_datasource.instance_exec(&block)
+            get_default_datasource.instance_exec(&block)
           end
 
         private
@@ -127,7 +139,7 @@ module Datasource
                 all
               end
             else
-              datasource_class ||= default_datasource
+              datasource_class ||= get_default_datasource
 
               all.extending(ScopeExtensions)
               .datasource_set(datasource_class: datasource_class)
@@ -203,7 +215,7 @@ module Datasource
         klass = records.first.class
         if reflection = klass.reflect_on_association(name)
           assoc_class = association_klass(reflection)
-          datasource_class = assoc_class.default_datasource
+          datasource_class = assoc_class.get_default_datasource
 
           scope = assoc_class.all
           datasource = datasource_class.new(scope)
