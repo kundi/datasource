@@ -107,27 +107,23 @@ module Datasource
           end
 
           def default_datasource
-            nil
+            @default_datasource ||= get_default_datasource
           end
 
           def get_default_datasource
-            if ds = default_datasource
-              ds
-            else
-              ancestors.each do |klass|
-                if klass.ancestors.include?(::ActiveRecord::Base) && klass != ::ActiveRecord::Base
-                  begin
-                    return "#{klass.name}Datasource".constantize
-                  rescue NameError
-                  end
+            ancestors.each do |klass|
+              if klass.ancestors.include?(::ActiveRecord::Base) && klass != ::ActiveRecord::Base
+                begin
+                  return "#{klass.name}Datasource".constantize
+                rescue NameError
                 end
               end
-              Datasource::From(self)
             end
+            Datasource::From(self)
           end
 
           def datasource_module(&block)
-            get_default_datasource.instance_exec(&block)
+            default_datasource.instance_exec(&block)
           end
 
         private
@@ -139,7 +135,7 @@ module Datasource
                 all
               end
             else
-              datasource_class ||= get_default_datasource
+              datasource_class ||= default_datasource
 
               all.extending(ScopeExtensions)
               .datasource_set(datasource_class: datasource_class)
@@ -215,7 +211,7 @@ module Datasource
         klass = records.first.class
         if reflection = klass.reflect_on_association(name)
           assoc_class = association_klass(reflection)
-          datasource_class = assoc_class.get_default_datasource
+          datasource_class = assoc_class.default_datasource
 
           scope = assoc_class.all
           datasource = datasource_class.new(scope)
@@ -302,10 +298,29 @@ module Datasource
         if scope.respond_to?(:datasource_set)
           scope = scope.spawn.datasource_set(datasource_class: nil)
         end
+        # add referenced tables as joins instead of includes
+        scope.joins_values += get_referenced_includes(scope)
         scope.includes_values = []
+        scope.references_values = []
         scope.to_a.tap do |records|
           load_associations(ds, records)
         end
+      end
+
+      def deep_to_a(a)
+        a.map do |e|
+          if e.kind_of?(Hash) || e.kind_of?(Array)
+            deep_to_a(e.to_a)
+          else
+            e
+          end
+        end
+      end
+
+      def get_referenced_includes(scope)
+        includes = deep_to_a(scope.includes_values)
+
+        includes.flatten.map(&:to_sym) & scope.references_values.map(&:to_sym)
       end
 
       def primary_scope_table(ds)
