@@ -320,10 +320,13 @@ module Datasource
     def results(rows = nil)
       rows ||= adapter.get_rows(self)
 
+      rows.each do |row|
+        row._datasource_instance = self
+      end
+
       collection_context = run_loaders(rows)
 
       rows.each do |row|
-        row._datasource_instance = self
         set_row_loaded_values(collection_context, row) if collection_context
       end
 

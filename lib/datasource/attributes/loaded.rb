@@ -78,11 +78,16 @@ module Datasource
 
       method_module = Module.new do
         define_method name do |*args, &block|
-          if _datasource_loaded
-            if _datasource_loaded.key?(name)
+          if _datasource_instance
+            if _datasource_loaded.try!(:key?, name)
               _datasource_loaded[name]
             else
-              fail Datasource::Error, "loader #{name} called but was not selected"
+              exposed_loaders = _datasource_instance.get_exposed_loaders
+              if exposed_loaders.include?(name)
+                fail Datasource::Error, "loader #{name} called but was not loaded yet"
+              else
+                fail Datasource::Error, "loader #{name} called but was not selected"
+              end
             end
           elsif defined?(super)
             super(*args, &block)
