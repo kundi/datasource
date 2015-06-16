@@ -302,8 +302,15 @@ module Datasource
           loader =
             self.class._loaders[loader_name] or
             fail Datasource::Error, "loader with name :#{loader_name} could not be found"
-          Datasource.logger.info { "Running loader #{loader_name} for #{rows.first.try!(:class)}" }
+          loader_started_at = nil
+          Datasource.logger.info do
+            loader_started_at = Time.now
+            "Running loader #{loader_name} for #{rows.first.try!(:class)}"
+          end
           collection_context.loaded_values[loader_name] = loader.load(collection_context)
+          Datasource.logger.info do
+            "#{((Time.now - loader_started_at) * 1000).round}ms [loader #{loader_name}]"
+          end
         end
       end
     end
