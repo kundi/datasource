@@ -148,7 +148,7 @@ module Datasource
       def association_reflection(klass, name)
         if reflection = klass.reflect_on_association(name)
           {
-            klass: reflection.klass,
+            klass: association_klass(reflection),
             macro: reflection.macro,
             foreign_key: reflection.try(:foreign_key)
           }
