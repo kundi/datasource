@@ -16,8 +16,13 @@ ActiveRecord::Schema.define(:version => 0) do
     t.string :author_last_name
   end
 
+  create_table :poly_posts, :force => true do |t|
+    t.string :post_title
+  end
+
   create_table :comments, :force => true do |t|
     t.integer :post_id
+    t.string :post_type
     t.text :comment
   end
 end

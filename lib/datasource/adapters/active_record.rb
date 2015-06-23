@@ -145,13 +145,28 @@ module Datasource
       end
 
     module_function
-      def association_reflection(klass, name)
+      def association_reflection(klass, name, association_klass = nil)
         if reflection = klass.reflect_on_association(name)
           {
-            klass: association_klass(reflection),
+            klass: association_klass || association_klass(reflection),
             macro: reflection.macro,
             foreign_key: reflection.try(:foreign_key)
           }
+        end
+      end
+
+      def association_reflection_with_polymorphic(records, name)
+        klass = records.first.class
+        reflection = klass.reflect_on_association(name)
+        if reflection.macro == :belongs_to && reflection.options[:polymorphic]
+          reflected_associations = []
+          records.group_by { |record| record.send(reflection.foreign_type) }.each_pair do |klass_name, records|
+            next unless klass_name
+            reflected_associations << association_reflection(klass, name, klass_name.constantize).merge(records: records)
+          end
+          reflected_associations
+        else
+          association_reflection(klass, name)
         end
       end
 
@@ -205,60 +220,71 @@ module Datasource
         end
       end
 
-      def load_association(records, name, assoc_select, params)
-        return if records.empty?
-        name = name.to_sym
-        klass = records.first.class
-        if reflection = klass.reflect_on_association(name)
-          assoc_class = association_klass(reflection)
-          datasource_class = assoc_class.default_datasource
+      def load_association_from_reflection(reflection, records, name, assoc_select, params)
+        assoc_class = reflection[:klass]
+        datasource_class = assoc_class.default_datasource
 
-          scope = assoc_class.all
-          datasource = datasource_class.new(scope)
-          assoc_select_attributes = assoc_select.reject { |att| att.kind_of?(Hash) }
-          assoc_select_associations = assoc_select.inject({}) do |hash, att|
-            hash.deep_merge!(att) if att.kind_of?(Hash)
-            hash
-          end
-          Datasource::Base.reflection_select(association_reflection(klass, name), [], assoc_select_attributes)
-          datasource.params(params)
+        scope = assoc_class.all
+        datasource = datasource_class.new(scope)
+        assoc_select_attributes = assoc_select.reject { |att| att.kind_of?(Hash) }
+        assoc_select_associations = assoc_select.inject({}) do |hash, att|
+          hash.deep_merge!(att) if att.kind_of?(Hash)
+          hash
+        end
+        Datasource::Base.reflection_select(reflection, [], assoc_select_attributes)
+        datasource.params(params)
 
-          if Datasource.logger.debug?
-            Datasource.logger.debug { "load_association #{records.first.try!(:class)} #{name}: #{assoc_select_attributes.inspect}" }
-          elsif Datasource.logger.info?
-            unless association_loaded?(records, name, assoc_select_attributes)
-              Datasource.logger.info { "Loading association #{name} for #{records.first.try!(:class)}" }
-            end
+        if Datasource.logger.debug?
+          Datasource.logger.debug { "load_association #{records.first.try!(:class)} #{name}: #{assoc_select_attributes.inspect}" }
+        elsif Datasource.logger.info?
+          unless association_loaded?(records, name, assoc_select_attributes)
+            Datasource.logger.info { "Loading association #{name} for #{records.first.try!(:class)}" }
           end
-          datasource.select(*assoc_select_attributes)
-          select_values = datasource.get_select_values
+        end
+        datasource.select(*assoc_select_attributes)
+        select_values = datasource.get_select_values
 
-          # TODO: manually load associations, and load them all at once for
-          # nested associations, eg. in following, load all Users in 1 query:
-          # {"user"=>["*"], "players"=>["*"], "picked_players"=>["*",
-          # {:position=>["*"]}], "parent_picked_team"=>["*", {:user=>["*"]}]}
-          begin
-            ::ActiveRecord::Associations::Preloader
-              .new.preload(records, name, assoc_class.select(*select_values))
-          rescue ArgumentError
-            ::ActiveRecord::Associations::Preloader
-              .new(records, name, assoc_class.select(*select_values)).run
-          end
+        # TODO: manually load associations, and load them all at once for
+        # nested associations, eg. in following, load all Users in 1 query:
+        # {"user"=>["*"], "players"=>["*"], "picked_players"=>["*",
+        # {:position=>["*"]}], "parent_picked_team"=>["*", {:user=>["*"]}]}
+        begin
+          ::ActiveRecord::Associations::Preloader
+            .new.preload(records, name, assoc_class.select(*select_values))
+        rescue ArgumentError
+          ::ActiveRecord::Associations::Preloader
+            .new(records, name, assoc_class.select(*select_values)).run
+        end
 
-          assoc_records = records.flat_map { |record| record.send(name) }.compact
-          unless assoc_records.empty?
-            assoc_select_associations.each_pair do |assoc_name, assoc_select|
-              Datasource.logger.debug { "load_association nested association #{assoc_name}: #{assoc_select.inspect}" }
-              load_association(assoc_records, assoc_name, assoc_select, params)
-            end
-            datasource.results(assoc_records)
+        assoc_records = records.flat_map { |record| record.send(name) }.compact
+        unless assoc_records.empty?
+          assoc_select_associations.each_pair do |assoc_name, assoc_select|
+            Datasource.logger.debug { "load_association nested association #{assoc_name}: #{assoc_select.inspect}" }
+            load_association(assoc_records, assoc_name, assoc_select, params)
           end
+          datasource.results(assoc_records)
         end
       rescue Exception => ex
         if ex.is_a?(SystemStackError) || ex.is_a?(Datasource::RecursionError)
           fail Datasource::RecursionError, "recursive association (involving #{name})"
         else
           raise
+        end
+      end
+
+      def load_association(records, name, assoc_select, params)
+        return if records.empty?
+        name = name.to_sym
+
+        reflection = association_reflection_with_polymorphic(records, name)
+        if reflection.kind_of?(Array)
+          reflection.each do |partial_reflection|
+            load_association_from_reflection(partial_reflection,
+              partial_reflection[:records], name, assoc_select, params)
+          end
+        elsif reflection
+          load_association_from_reflection(reflection,
+            records, name, assoc_select, params)
         end
       end
 
@@ -290,7 +316,8 @@ module Datasource
       def get_rows(ds)
         append_select = []
         ds.expose_associations.each_pair do |assoc_name, assoc_select|
-          if reflection = association_reflection(ds.class.orm_klass, assoc_name.to_sym)
+          # use NilClass because class is irrelevant in this case, but we want to support polymorphic associations
+          if reflection = association_reflection(ds.class.orm_klass, assoc_name.to_sym, NilClass)
             Datasource::Base.reflection_select(reflection, append_select, [])
           end
         end
