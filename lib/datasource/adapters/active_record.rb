@@ -145,10 +145,10 @@ module Datasource
       end
 
     module_function
-      def association_reflection(klass, name, association_klass = nil)
+      def association_reflection(klass, name, using_association_klass = nil)
         if reflection = klass.reflect_on_association(name)
           {
-            klass: association_klass || association_klass(reflection),
+            klass: using_association_klass || association_klass(reflection),
             macro: reflection.macro,
             foreign_key: reflection.try(:foreign_key)
           }
