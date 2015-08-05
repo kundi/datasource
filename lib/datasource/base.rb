@@ -81,20 +81,24 @@ module Datasource
       end
     end
 
-    attr_reader :scope, :expose_attributes, :expose_associations, :adapter
+    attr_reader :base_scope, :expose_attributes, :expose_associations, :adapter
 
-    def initialize(scope, adapter = nil)
+    def initialize(base_scope, adapter = nil)
       @adapter = adapter || self.class.default_adapter
-      @scope =
-        if self.class._update_scope
-          self.class._update_scope.call(scope)
-        else
-          scope
-        end
       @expose_attributes = []
       @expose_associations = {}
       @select_all_columns = false
       @params = {}
+      @base_scope = base_scope
+    end
+
+    def scope
+      @scope ||=
+        if self.class._update_scope
+          instance_exec(@base_scope, &self.class._update_scope)
+        else
+          @base_scope
+        end
     end
 
     def params(*args)
@@ -253,7 +257,7 @@ module Datasource
     end
 
     def get_collection_context(rows)
-      self.class._collection_context.new(@scope, rows, self, @params)
+      self.class._collection_context.new(scope, rows, self, @params)
     end
 
     def get_exposed_loaders

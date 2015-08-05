@@ -238,7 +238,7 @@ module Datasource
       end
 
       def primary_scope_table(ds)
-        ds.scope.first_source_alias.to_s
+        ds.base_scope.first_source_alias.to_s
       end
 
       def ensure_table_join!(ds, name, att)
