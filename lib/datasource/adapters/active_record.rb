@@ -158,6 +158,7 @@ module Datasource
       def association_reflection_with_polymorphic(records, name)
         klass = records.first.class
         reflection = klass.reflect_on_association(name)
+        fail "#{klass} does not have an association named #{name}" unless reflection
         if reflection.macro == :belongs_to && reflection.options[:polymorphic]
           reflected_associations = []
           records.group_by { |record| record.send(reflection.foreign_type) }.each_pair do |klass_name, records|
