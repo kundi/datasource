@@ -249,13 +249,11 @@ module Datasource
         # nested associations, eg. in following, load all Users in 1 query:
         # {"user"=>["*"], "players"=>["*"], "picked_players"=>["*",
         # {:position=>["*"]}], "parent_picked_team"=>["*", {:user=>["*"]}]}
-        begin
-          ::ActiveRecord::Associations::Preloader
-            .new.preload(records, name, assoc_class.select(*select_values))
-        rescue ArgumentError
-          ::ActiveRecord::Associations::Preloader
-            .new(records, name, assoc_class.select(*select_values)).run
-        end
+        ::ActiveRecord::Associations::Preloader.new(
+            records: records.flatten,
+            associations: name,
+            scope: assoc_class.select(*select_values)
+          ).call
 
         assoc_records = records.flat_map { |record| record.send(name) }.compact
         unless assoc_records.empty?
